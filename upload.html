@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload - アップロード</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">📁</span>
+                <span class="logo-text">File<span class="highlight">Share</span></span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">ホーム</a>
+                <a href="upload.html" class="nav-link active">アップロード</a>
+                <a href="help.html" class="nav-link">ヘルプ</a>
+            </nav>
+        </header>
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <div class="upload-box" id="uploadBox">
+                <div class="upload-icon">☁️</div>
+                <h2>ファイルをアップロード</h2>
+                <p>ファイルをドラッグ＆ドロップ、またはクリックして選択</p>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    ファイルを選択
+                </button>
+                <input type="file" id="fileInput" multiple hidden>
+                
+                <!-- Progress Bar -->
+                <div class="progress-wrapper" id="progressWrapper">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">アップロード中...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload History Section -->
+        <section class="files-section">
+            <div class="section-header">
+                <h2>📤 アップロード履歴</h2>
+            </div>
+            <div id="uploadHistory">
+                <p class="empty-message">まだファイルがアップロードされていません。</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Upload functionality for upload.html
+        const fileInput = document.getElementById('fileInput');
+        const uploadBox = document.getElementById('uploadBox');
+        const progressWrapper = document.getElementById('progressWrapper');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        // Click to select files
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        // Drag and drop
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        // Override handleFiles to also update upload history
+        const originalHandleFiles = handleFiles;
+        window.handleFiles = async function(fileList) {
+            if (fileList.length === 0) return;
+
+            progressWrapper.style.display = 'block';
+
+            // Upload to server
+            const formData = new FormData();
+            Array.from(fileList).forEach(file => formData.append('files', file));
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message);
+                    renderUploadHistory();
+                }
+            } catch (error) {
+                console.error('アップロードに失敗しました:', error);
+                showToast('アップロードに失敗しました');
+            }
+
+            // Simulate progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 100) progress = 100;
+                
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `アップロード中... ${Math.round(progress)}%`;
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressWrapper.style.display = 'none';
+                        progressFill.style.width = '0%';
+                    }, 500);
+                }
+            }, 100);
+        };
+
+        function renderUploadHistory() {
+            const historyContainer = document.getElementById('uploadHistory');
+            
+            loadFiles().then(() => {
+                if (!files || files.length === 0) {
+                    historyContainer.innerHTML = '<p class="empty-message">まだファイルがアップロードされていません。</p>';
+                    return;
+                }
+
+                const recentFiles = files.slice(-5).reverse();
+                historyContainer.innerHTML = recentFiles.map(file => `
+                    <div class="file-item">
+                        <span class="file-icon">${file.icon || getFileIcon(file.name)}</span>
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${file.size_formatted || formatSize(file.size)}</span>
+                        <span class="file-date">${file.date}</span>
+                    </div>
+                `).join('');
+            });
+        }
+
+        // Load history on page load
+        renderUploadHistory();
+
+        // Load history on page load
+        renderUploadHistory();
+    </script>
+
+    <style>
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius);
+            padding: 50px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 3px dashed #cbd5e1;
+            transition: all 0.3s;
+        }
+
+        .upload-box.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .upload-box h2 {
+            color: var(--dark);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .upload-box p {
+            color: var(--gray);
+            margin-bottom: 25px;
+        }
+
+        .upload-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            border-radius: var(--radius-sm);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .progress-wrapper {
+            display: none;
+            margin-top: 25px;
+        }
+
+        .progress-bar {
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+
+        .progress-text {
+            color: var(--gray);
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .files-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius);
+            padding: 30px;
+            box-shadow: var(--shadow);
+        }
+
+        .section-header h2 {
+            color: var(--dark);
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            gap: 15px;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-icon {
+            font-size: 24px;
+        }
+
+        .file-name {
+            flex: 1;
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .file-size {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .file-date {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .empty-message {
+            color: var(--gray);
+            text-align: center;
+            padding: 30px;
+        }
+    </style>
+</body>
+</html>
