@@ -40,12 +40,20 @@ function formatSize(bytes) {
 // Load files from server
 // ========================================
 async function loadFiles() {
+    const grid = document.getElementById('filesGrid');
+    const list = document.getElementById('filesList');
+    
+    // Show loading state
+    grid.innerHTML = '<div class="loading-spinner">⏳ 読み込み中...</div>';
+    list.innerHTML = '';
+    
     try {
         const response = await fetch('/api/files');
         files = await response.json();
         renderFiles();
     } catch (error) {
         console.error('ファイルの読み込みに失敗しました:', error);
+        grid.innerHTML = '<div class="error-message">❌ ファイルの読み込みに失敗しました</div>';
     }
 }
 
@@ -87,6 +95,7 @@ function renderFiles() {
                 <div class="file-size">${file.size_formatted || formatSize(file.size)}</div>
             </div>
             <div class="file-actions">
+                <button class="share-btn" onclick="shareFile('${file.filename}', '${file.name}')">🔗</button>
                 <button class="download-btn" onclick="downloadFile('${file.filename}')">⬇️</button>
                 <button class="delete-btn" onclick="deleteFile('${file.filename}')">🗑️</button>
             </div>
@@ -183,6 +192,16 @@ function downloadFile(filename) {
     window.location.href = `/api/download/${filename}`;
 }
 
+function shareFile(filename, name) {
+    // Get current base URL
+    const baseUrl = window.location.origin;
+    const shareUrl = `${baseUrl}/api/download/${filename}`;
+    
+    // Show modal with share link
+    document.getElementById('shareLink').value = shareUrl;
+    document.getElementById('shareModal').classList.add('show');
+}
+
 async function deleteFile(filename) {
     if (confirm('このファイルを削除しますか？')) {
         try {
@@ -231,7 +250,7 @@ viewBtns.forEach(btn => {
 // ========================================
 // Modal Functions
 // ========================================
-function showModal(link) {
+function showModal(link rel="ico" href="favicon.ico">) {
     document.getElementById('shareLink').value = link;
     document.getElementById('shareModal').classList.add('show');
 }

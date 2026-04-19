@@ -67,6 +67,18 @@ def get_files():
     files = load_files()
     return jsonify(files)
 
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {
+    'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp',
+    'mp4', 'avi', 'mov', 'mkv', 'webm', 'flv',
+    'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a',
+    'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt',
+    'zip', 'rar', '7z', 'tar', 'gz'
+}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 # Upload files
 @app.route('/api/upload', methods=['POST'])
 def upload_files():
@@ -78,6 +90,10 @@ def upload_files():
     
     for file in files_list:
         if file.filename:
+            # Validate file type
+            if not allowed_file(file.filename):
+                return jsonify({'error': 'サポートされていないファイル形式です'}), 400
+            
             # Save file
             filename = f"{datetime.now().timestamp()}_{file.filename}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
